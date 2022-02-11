@@ -4,7 +4,22 @@
       <div class="col-8">
         <div class="card p-3">
           <p>Monthly principal and interest</p>
-          <h2>{{monthly}}</h2>
+          <h2>{{monthlyPayment}}</h2>
+
+          <table>
+            <tr>
+              <th>Payment #</th>
+              <th>Principal</th>
+              <th>Interest</th>
+              <th>Balance</th>
+            </tr>
+            <tr v-for="payment in payments" :key="payment.number">
+              <td>{{payment.number}}</td>
+              <td>{{payment.principalPayment}}</td>
+              <td>{{payment.interestPayment}}</td>
+              <td>{{payment.stillOwe}}</td>
+            </tr>
+          </table>
         </div>
       </div>
       <div class="col-4">
@@ -23,6 +38,7 @@
           <label class="form-label mb-0" style="text-align:left">Loan term (years)</label>
           <input v-model="loanTerm" class="form-control mb-2" placeholder="30"> <!--v-mask?-->
 
+          <button class="btn-primary" @click="calc"> Calculate </button>
         </div>
       </div>
     </div>
@@ -36,24 +52,47 @@ export default Vue.extend({
   name: 'AmortizationEntry',
   data: function () {
     return {
-      homeValue: null,
-      interestRate: null,
-      downPayment: 0,
-      loanTerm: 30
+      homeValue: null, // user entry
+      interestRate: null, // user entry
+      downPayment: 0, // user entry
+      loanTerm: 30, // user entry
+      payments: [],
+      principal: null,
+      numPayments: null,
+      r: null,
+      monthlyPayment: null
+      // loading state?
     }
   },
-  computed: {
-    monthly () { // might need to convert interest rate to decimal?
-      let numPayments = 0
+  methods: {
+    calc () {
       if (this.homeValue && this.interestRate && this.loanTerm) {
-        numPayments = 12 * parseInt(this.loanTerm)
+        this.principal = (this.downPayment) ? this.homeValue - this.downPayment : this.homeValue
+        this.numPayments = 12 * parseInt(this.loanTerm)
         console.log(this.interestRate)
-        const r = parseFloat(this.interestRate) / 100 / 12
-        console.log(r)
-        return (r / (1 - ((1 + r) ** (numPayments * -1)))) * (parseInt(this.homeValue) - parseInt(this.downPayment)).toFixed(2)
+        this.r = parseFloat(this.interestRate) / 100 / 12
+        console.log(this.r)
+        this.monthlyPayment = Math.round((this.r / (1 - ((1 + this.r) ** (this.numPayments * -1)))) * (parseInt(this.homeValue) - parseInt(this.downPayment)))
+        this.calcYears()
       } else {
-        return 'Need more info'
+        this.monthlyPayment = null
+        // null out everything?
       }
+    },
+    calcYears () {
+      this.payments = []
+      let remainingBalance = this.principal
+
+      for (let index = 0; index < this.numPayments; index++) {
+        const payment = {}
+        payment.number = index
+        payment.stillOwe = Math.round(remainingBalance)
+        payment.interestPayment = (index !== 0) ? Math.round(remainingBalance * (this.r)) : 0
+        payment.principalPayment = (index !== 0) ? Math.round(this.monthlyPayment - payment.interestPayment) : 0
+        this.payments.push(payment)
+        remainingBalance = remainingBalance - this.monthlyPayment
+      }
+      console.log(this.payments)
     }
   }
 })
