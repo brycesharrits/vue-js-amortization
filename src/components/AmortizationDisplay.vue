@@ -6,7 +6,11 @@
           <p>Monthly principal and interest</p>
           <h2>{{monthlyPayment}}</h2>
 
-          <table>
+          <div>
+            <canvas id="myChart"></canvas>
+          </div>
+
+          <!-- <table>
             <tr>
               <th>Payment #</th>
               <th>Principal</th>
@@ -19,8 +23,8 @@
               <td>{{payment.interestPayment}}</td>
               <td>{{payment.stillOwe}}</td>
             </tr>
-          </table>
-years
+          </table> -->
+
            <table>
             <tr>
               <th>Year</th>
@@ -62,6 +66,7 @@ years
 
 <script>
 import Vue from 'vue'
+import Chart from 'chart.js'
 
 export default Vue.extend({
   name: 'AmortizationEntry',
@@ -76,8 +81,26 @@ export default Vue.extend({
       principal: null,
       numPayments: null,
       r: null,
-      monthlyPayment: null
+      monthlyPayment: null,
       // loading state?
+      chartData: {
+        type: 'line',
+        data: {},
+        options: {
+          responsive: true,
+          lineTension: 1,
+          scales: {
+            yAxes: [
+              {
+                ticks: {
+                  beginAtZero: true,
+                  padding: 25
+                }
+              }
+            ]
+          }
+        }
+      }
     }
   },
   methods: {
@@ -130,10 +153,53 @@ export default Vue.extend({
       })
 
       let stillOwed = this.principal
+      let sumOfPrincipalPaid = 0
+      let sumOfInterestPaid = 0
       this.years.forEach((year) => {
         year.stillOwe = stillOwed
         stillOwed = stillOwed - year.principalPayment
+        year.sumOfPrincipalPaid = sumOfPrincipalPaid
+        sumOfPrincipalPaid = sumOfPrincipalPaid + year.principalPayment
+        year.sumOfInterestPaid = sumOfInterestPaid
+        sumOfInterestPaid = sumOfInterestPaid + year.interestPayment
       })
+      this.showGraph()
+    },
+    showGraph () {
+      this.chartData.data.labels = this.years.map((year) => year.number)
+      this.chartData.data.datasets = []
+
+      const remaining = {}
+      remaining.label = 'Remaining'
+      remaining.data = this.years.map((year) => year.stillOwe)
+      remaining.backgroundColor = 'rgba(0,21,255,.8)'
+      remaining.borderColor = '#36495d'
+      remaining.borderWidth = 1
+      remaining.fill = false
+      this.chartData.data.datasets.push(remaining)
+
+      const principal = {}
+      principal.label = 'Principal Paid'
+      principal.data = this.years.map((year) => year.sumOfPrincipalPaid)
+      principal.backgroundColor = 'rgba(0,255,5,.8)'
+      principal.borderColor = '#36495d'
+      principal.borderWidth = 1
+      principal.fill = false
+      this.chartData.data.datasets.push(principal)
+
+      const interest = {}
+      interest.label = 'Interest Paid'
+      interest.data = this.years.map((year) => year.sumOfInterestPaid)
+      interest.backgroundColor = 'rgba(255,250,0,.8)'
+      interest.borderColor = '#36495d'
+      interest.borderWidth = 1
+      interest.fill = false
+      this.chartData.data.datasets.push(interest)
+
+      console.log(this.years)
+      const ctx = document.getElementById('myChart')
+      // eslint-disable-next-line no-new
+      new Chart(ctx, this.chartData)
     }
   }
 })
